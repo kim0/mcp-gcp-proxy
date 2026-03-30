@@ -28,6 +28,10 @@ def googleapis_main(argv: Sequence[str] | None = None) -> int:
         timeout_config=config.timeouts,
         retry_config=config.retries,
         user_project=config.project,
+        server_instructions=(
+            f"The GCP project ID is {config.project}."
+            f" Use it in resource paths (e.g. projects/{config.project}/...)."
+        ),
     )
     StdioMcpProxy(transport=transport).run()
     return 0

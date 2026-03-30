@@ -361,3 +361,81 @@ def test_user_project_header_is_set() -> None:
     _ = transport.send({"jsonrpc": "2.0", "id": 3, "method": "ping", "params": {}})
 
     assert seen_header["value"] == "my-test-project"
+
+
+def test_server_instructions_injected_into_initialize_response() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "result": {
+                    "protocolVersion": "2025-11-05",
+                    "capabilities": {},
+                    "serverInfo": {},
+                },
+            },
+            headers={"mcp-session-id": "s1"},
+            request=request,
+        )
+
+    transport = McpHttpTransport(
+        url="https://example.test/mcp",
+        token_provider=StaticTokenProvider(),
+        timeout_config=TimeoutConfig(
+            connect_seconds=1, read_seconds=2, write_seconds=3, pool_seconds=4,
+        ),
+        retry_config=RetryConfig(max_retries=0, backoff_factor=0.0),
+        server_instructions="The GCP project ID is my-proj.",
+        base_transport=httpx.MockTransport(handler),
+    )
+
+    responses = transport.send({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {"protocolVersion": "2025-11-05", "capabilities": {}, "clientInfo": {}},
+    })
+
+    assert responses[0]["result"]["instructions"] == "The GCP project ID is my-proj."
+
+
+def test_server_instructions_appended_to_existing() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "result": {
+                    "protocolVersion": "2025-11-05",
+                    "capabilities": {},
+                    "serverInfo": {},
+                    "instructions": "Upstream instructions.",
+                },
+            },
+            headers={"mcp-session-id": "s1"},
+            request=request,
+        )
+
+    transport = McpHttpTransport(
+        url="https://example.test/mcp",
+        token_provider=StaticTokenProvider(),
+        timeout_config=TimeoutConfig(
+            connect_seconds=1, read_seconds=2, write_seconds=3, pool_seconds=4,
+        ),
+        retry_config=RetryConfig(max_retries=0, backoff_factor=0.0),
+        server_instructions="The GCP project ID is my-proj.",
+        base_transport=httpx.MockTransport(handler),
+    )
+
+    responses = transport.send({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {"protocolVersion": "2025-11-05", "capabilities": {}, "clientInfo": {}},
+    })
+
+    expected = "Upstream instructions.\n\nThe GCP project ID is my-proj."
+    assert responses[0]["result"]["instructions"] == expected

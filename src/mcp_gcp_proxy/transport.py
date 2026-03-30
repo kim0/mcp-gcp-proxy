@@ -24,11 +24,13 @@ class McpHttpTransport:
         timeout_config: TimeoutConfig,
         retry_config: RetryConfig,
         user_project: str | None = None,
+        server_instructions: str | None = None,
         base_transport: httpx.BaseTransport | None = None,
     ) -> None:
         self._url = url
         self._token_provider = token_provider
         self._user_project = user_project
+        self._server_instructions = server_instructions
         self._session_id: str | None = None
         self._protocol_version: str | None = None
         self._initialize_request: JSONObj | None = None
@@ -151,6 +153,19 @@ class McpHttpTransport:
             initialize_request=message,
             responses=responses,
         )
+        self._inject_instructions(responses)
+
+    def _inject_instructions(self, responses: list[JSONObj]) -> None:
+        if not self._server_instructions or not responses:
+            return
+        result = responses[0].get("result")
+        if not isinstance(result, dict):
+            return
+        existing = result.get("instructions", "")
+        if existing:
+            result["instructions"] = f"{existing}\n\n{self._server_instructions}"
+        else:
+            result["instructions"] = self._server_instructions
 
     def _reinitialize_after_session_loss(self, message: JSONObj) -> list[JSONObj]:
         initialize_request = self._initialize_request
