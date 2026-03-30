@@ -35,7 +35,7 @@ def test_access_provider_caches_until_refresh_window(monkeypatch: Any) -> None:
     source_credentials = object()
     access_credentials = FakeCredentials("access")
 
-    monkeypatch.setattr("google.auth.default", lambda **_: (source_credentials, "sdp-tealbook-dev"))
+    monkeypatch.setattr("google.auth.default", lambda **_: (source_credentials, "my-test-project"))
 
     recorder = FactoryRecorder()
 
@@ -46,9 +46,9 @@ def test_access_provider_caches_until_refresh_window(monkeypatch: Any) -> None:
     monkeypatch.setattr("google.auth.impersonated_credentials.Credentials", fake_access_factory)
 
     provider = ImpersonatedAccessTokenProvider(
-        impersonate_service_account="mcp-readonly@sdp-tealbook-dev.iam.gserviceaccount.com",
+        impersonate_service_account="mcp-readonly@my-test-project.iam.gserviceaccount.com",
         scopes=("scope-1",),
-        quota_project="sdp-tealbook-dev",
+        quota_project="my-test-project",
     )
 
     first = provider.get_bearer_token()
@@ -58,7 +58,7 @@ def test_access_provider_caches_until_refresh_window(monkeypatch: Any) -> None:
     assert access_credentials.refresh_calls == 1
     assert (
         recorder.calls[0]["target_principal"]
-        == "mcp-readonly@sdp-tealbook-dev.iam.gserviceaccount.com"
+        == "mcp-readonly@my-test-project.iam.gserviceaccount.com"
     )
 
     provider._cache = _CachedToken(token=first, expiry=datetime.now(UTC) + timedelta(seconds=30))  # type: ignore[attr-defined]
@@ -117,7 +117,7 @@ def test_id_provider_uses_audience(monkeypatch: Any) -> None:
     provider = ImpersonatedIdTokenProvider(
         impersonate_service_account="sa@example.com",
         audience="https://toolbox.run.app",
-        quota_project="sdp-tealbook-dev",
+        quota_project="my-test-project",
     )
 
     token = provider.get_bearer_token()

@@ -26,7 +26,7 @@ def _transport(handler: Any) -> McpHttpTransport:
             pool_seconds=4,
         ),
         retry_config=RetryConfig(max_retries=1, backoff_factor=0.0),
-        user_project="sdp-tealbook-dev",
+        user_project="my-test-project",
         base_transport=httpx.MockTransport(handler),
     )
 
@@ -360,4 +360,4 @@ def test_user_project_header_is_set() -> None:
     transport = _transport(handler)
     _ = transport.send({"jsonrpc": "2.0", "id": 3, "method": "ping", "params": {}})
 
-    assert seen_header["value"] == "sdp-tealbook-dev"
+    assert seen_header["value"] == "my-test-project"

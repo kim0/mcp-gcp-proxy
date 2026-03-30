@@ -11,11 +11,11 @@ This package keeps Claude MCP access least-privileged while removing the old `gc
 
 ## Identity model
 
-- Developer machine identity: local ADC with permission to impersonate `mcp-readonly`.
-- Developer-side invoker identity: `mcp-readonly`.
-- Toolbox runtime identity: separate `toolbox-runtime` Cloud Run service account.
+- Developer machine identity: local ADC with permission to impersonate the target service account.
+- Developer-side invoker identity: a dedicated read-only service account (e.g. `mcp-readonly@PROJECT.iam`).
+- Toolbox runtime identity: a separate Cloud Run service account.
 
-`mcp-readonly` and `toolbox-runtime` are intentionally separate.
+The invoker and runtime identities are intentionally separate to enforce least privilege.
 
 ## Package layout
 
@@ -39,13 +39,43 @@ uv run mypy
 uv run pytest
 ```
 
-## Integration from `sdp-infra`
+## Usage
 
-`sdp-infra/.mcp.json` uses this sibling package via `uv` without adding Python package files to `sdp-infra`:
+Install from GitHub and run via `uvx`:
 
 ```bash
-uv run --with ../mcp-gcp-proxy scripts/mcp-googleapis-proxy.py ...
-uv run --with ../mcp-gcp-proxy scripts/mcp-cloudrun-proxy.py ...
+# Google-managed MCP endpoints (Logging, BigQuery, Monitoring, etc.)
+uvx --from git+https://github.com/kim0/mcp-gcp-proxy.git \
+  mcp-googleapis-proxy \
+  --url https://logging.googleapis.com/mcp \
+  --impersonate-service-account sa@my-project.iam.gserviceaccount.com \
+  --project my-project
+
+# Private Cloud Run Toolbox endpoint
+uvx --from git+https://github.com/kim0/mcp-gcp-proxy.git \
+  mcp-cloudrun-proxy \
+  --url https://my-toolbox-service.run.app/mcp \
+  --impersonate-service-account sa@my-project.iam.gserviceaccount.com
+```
+
+Or reference it in a Claude `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "gcp-logging": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from", "git+https://github.com/kim0/mcp-gcp-proxy.git",
+        "mcp-googleapis-proxy",
+        "--url", "https://logging.googleapis.com/mcp",
+        "--impersonate-service-account", "sa@my-project.iam.gserviceaccount.com",
+        "--project", "my-project"
+      ]
+    }
+  }
+}
 ```
 
 ## Security boundaries

@@ -40,7 +40,7 @@ def test_default_retries_are_disabled() -> None:
             "--impersonate-service-account",
             "mcp-readonly@example.com",
             "--project",
-            "sdp-tealbook-dev",
+            "my-test-project",
         ]
     )
     assert config.retries.max_retries == 0
